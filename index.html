@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Basket Pro Trainer</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BasketPro">
+
+<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/889/889500.png">
+<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/889/889500.png">
+
+<style>
+body {
+  margin:0; font-family:'Segoe UI', Arial, sans-serif;
+  background:black; color:white; overflow: hidden;
+  display:flex; justify-content:center; align-items:center; height:100vh;
+  transition: background 0.2s;
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+}
+
+/* MENU PRINCIPAL */
+#main-menu { display: flex; flex-direction: column; gap: 15px; z-index: 100; align-items: center; }
+.menu-card {
+  background: #222; padding: 25px; border-radius: 20px; cursor: pointer;
+  width: 320px; transition: 0.3s; border: 2px solid transparent;
+}
+.menu-card:hover { border-color: #3498db; background: #333; transform: scale(1.05); }
+.menu-card h2 { margin: 0 0 5px 0; color: #3498db; font-size: 22px; }
+.menu-card p { margin: 0; color: #aaa; font-size: 13px; }
+
+#volume-container { background: #111; padding: 15px; border-radius: 15px; width: 320px; margin-top: 10px; border: 1px solid #333; }
+#volume-container label { font-size: 10px; color: #777; text-transform: uppercase; display: block; margin-bottom: 5px; }
+
+/* INTERFACE ENTRAINEMENT */
+.app-view { display: none; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center; }
+#action-text { font-size: 55px; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; padding: 0 20px; text-align: center; line-height: 1.1; }
+#status-text { font-size: 22px; color: #ccc; min-height: 1.2em; }
+#timer-display { position:fixed; top:80px; font-size:28px; font-weight:bold; color:#3498db; }
+
+/* PANNEAU REGLAGES */
+#settings-panel {
+  position: fixed; top: 0; right: -380px; width: 340px; height: 100%;
+  background: rgba(25, 25, 25, 0.98); padding: 25px;
+  box-shadow: -5px 0 15px rgba(0,0,0,0.5); transition: 0.3s; z-index: 200;
+  display: flex; flex-direction: column; gap: 12px; text-align: left; overflow-y: auto; padding-bottom: 100px;
+}
+#settings-panel.open { right: 0; }
+
+.controls { position: fixed; bottom: 30px; display: flex; gap: 15px; z-index: 10; }
+button { font-size: 18px; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+.btn-main { background: #27ae60; color: white; width: 140px; }
+.btn-stop { background: #c0392b; color: white; }
+.btn-nav { position: fixed; top: 20px; background: #444; color: white; }
+#btn-menu { left: 20px; }
+#btn-settings { right: 20px; }
+
+.control-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+label { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+.val { float: right; color: #3498db; font-weight: bold; }
+hr { border: 0; border-top: 1px solid #444; margin: 8px 0; }
+h3 { margin: 10px 0 5px 0; font-size: 15px; color: #eee; border-left: 3px solid #3498db; padding-left: 10px; }
+
+.check-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; background: #222; padding: 10px; border-radius: 8px; cursor: pointer; }
+.check-freq-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; background: #222; padding: 8px; border-radius: 5px; }
+.check-freq-item input[type="number"] { width: 50px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; text-align: center; margin-left: auto;}
+</style>
+</head>
+<body>
+
+<div id="main-menu">
+  <div class="menu-card" onclick="openApp('dribble')">
+    <h2>DRIBBLER</h2>
+    <p>Réactivité et finitions personnalisées.</p>
+  </div>
+  <div class="menu-card" onclick="openApp('shoot')">
+    <h2>SHOOTER / DRIVE</h2>
+    <p>Probabilités et timings réglables.</p>
+  </div>
+  <div class="menu-card" onclick="openApp('finition')">
+    <h2>FINITIONS CERCLE</h2>
+    <p>Signal sonore et appuis variés.</p>
+  </div>
+  <div id="volume-container">
+    <label>Volume des bips : <span id="vol-val">50%</span></label>
+    <input type="range" id="globalVolume" min="0" max="1" step="0.1" value="0.5" style="width:100%" oninput="document.getElementById('vol-val').textContent=(this.value*100)+'%'">
+  </div>
+</div>
+
+<div id="app-interface" class="app-view">
+    <button id="btn-menu" class="btn-nav" onclick="goBackToMenu()">🏠 MENU</button>
+    <button id="btn-settings" class="btn-nav" onclick="toggleSettings()">⚙ RÉGLAGES</button>
+    <div id="timer-display">05:00</div>
+    <div id="action-text">PRÊT ?</div>
+    <div id="status-text">Configure et START</div>
+    <div class="controls">
+        <button id="btn-play" class="btn-main" onclick="toggleRun()">START</button>
+        <button id="btn-reset" class="btn-stop" onclick="resetCurrent()">RESET</button>
+    </div>
+</div>
+
+<div id="settings-panel">
+    <h2 id="settings-title">Réglages</h2>
+    <div id="settings-content"></div>
+    <button onclick="toggleSettings()" style="background:#444; color:white; margin-top:15px; padding: 15px; width:100%; border-radius:10px;">FERMER</button>
+</div>
+
+<script>
+let currentMode = '', isRunning = false, currentTimeout = null, currentInterval = null;
+let workoutStartTime = null, workoutDurationMs = 5 * 60 * 1000;
+
+let dribbleSeriesCount = 0, lastDribbleText = "", spinUsedThisSeries = false, dribblesLeftInSet = 0;
+const allDribbleMoves = [
+    {id:"cross", text:"CROSS OVER", color:"#3498db"},
+    {id:"behind", text:"BEHIND THE BACK", color:"#1abc9c"},
+    {id:"between", text:"BETWEEN THE LEGS", color:"#e67e22"},
+    {id:"reverse", text:"REVERSE LEGS", color:"#d35400"},
+    {id:"spin", text:"SPIN", color:"#9b59b6"}
+];
+const dribbleFinishesChoices = [
+    {id:"f_lbg", text:"LAY BACK GAUCHE"}, {id:"f_lbd", text:"LAY BACK DROITE"},
+    {id:"f_lug", text:"LAY UP GAUCHE"}, {id:"f_lud", text:"LAY UP DROITE"}
+];
+const finishingMoves = [
+    {id:"spinm", text:"Spin Moov", color:"#9b59b6"}, {id:"euro", text:"Euro Step", color:"#e67e22"},
+    {id:"rev", text:"Reverse", color:"#34495e"}, {id:"one", text:"One Step", color:"#1abc9c"},
+    {id:"back", text:"Lay Back", color:"#d35400"}, {id:"stop", text:"Stop and Go", color:"#2980b9"},
+    {id:"layup", text:"Lay up", color:"#27ae60"}, {id:"float", text:"Floater", color:"#f1c40f"},
+    {id:"power", text:"Power", color:"#c0392b"}, {id:"pump", text:"Pump", color:"#8e44ad"},
+    {id:"slow", text:"Appui contact", color:"#16a085"}
+];
+
+function openApp(mode) {
+    currentMode = mode;
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('app-interface').style.display = 'flex';
+    buildSettings();
+}
+
+function goBackToMenu() { location.reload(); }
+function toggleSettings() { document.getElementById('settings-panel').classList.toggle('open'); }
+
+function toggleRun() {
+    isRunning = !isRunning;
+    const btn = document.getElementById('btn-play');
+    if(isRunning) {
+        btn.textContent = "PAUSE"; btn.style.background = "#e67e22";
+        document.getElementById('settings-panel').classList.remove('open');
+        if(!workoutStartTime) {
+            workoutDurationMs = parseInt(document.getElementById('workoutDuration').value) * 60 * 1000;
+            workoutStartTime = Date.now();
+            currentInterval = setInterval(updateGlobalTimer, 250);
+        }
+        if(currentMode === 'finition') runFinishSequence();
+        else if(currentMode === 'dribble') startDribbleLogic();
+        else if(currentMode === 'shoot') runShootSequence();
+    } else {
+        btn.textContent = "PLAY"; btn.style.background = "#27ae60";
+        clearTimeout(currentTimeout);
+    }
+}
+
+function updateGlobalTimer() {
+    if(!isRunning) return;
+    const rem = workoutDurationMs - (Date.now() - workoutStartTime);
+    if(rem <= 0){ stopWorkout(); return; }
+    const s = Math.ceil(rem/1000);
+    document.getElementById('timer-display').textContent = `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+}
+
+function stopWorkout() {
+    isRunning = false; clearInterval(currentInterval); clearTimeout(currentTimeout);
+    document.body.style.background = "black";
+    document.getElementById("action-text").textContent = "SÉANCE FINIE !";
+}
+
+function resetCurrent() { location.reload(); }
+
+function beep(freq = 800) {
+    const vol = parseFloat(document.getElementById('globalVolume').value);
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = freq;
+    osc.connect(gain); gain.connect(ctx.destination);
+    gain.gain.value = vol;
+    osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.2);
+    osc.stop(ctx.currentTime + 0.2);
+}
+
+function triggerVisual(text, color, freq = 800) {
+    document.body.style.background = color;
+    document.body.style.color = (color === "white" || color === "#f1c40f") ? "black" : "white";
+    document.getElementById('action-text').textContent = text;
+    if(text !== "" && freq > 0) beep(freq);
+}
+
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+/* --- DRIBBLE --- */
+function startDribbleLogic() {
+    if(!isRunning) return;
+    if(dribblesLeftInSet === 0) dribblesLeftInSet = rand(parseInt(document.getElementById('countMin').value), parseInt(document.getElementById('countMax').value));
+    dribbleStep();
+}
+function dribbleStep() {
+    if(!isRunning) return;
+    if(dribblesLeftInSet > 0) {
+        let selected = []; allDribbleMoves.forEach(m => { if(document.getElementById('chk-'+m.id).checked) selected.push(m.id); });
+        let av = allDribbleMoves.filter(m => selected.includes(m.id) && m.text !== lastDribbleText);
+        if(spinUsedThisSeries || (dribbleSeriesCount % 4 !== 0)) av = av.filter(m => m.text !== "SPIN");
+        if(av.length === 0) return;
+        const move = av[Math.floor(Math.random()*av.length)];
+        if(move.text === "SPIN") spinUsedThisSeries = true;
+        lastDribbleText = move.text; triggerVisual(move.text, move.color, 700);
+        dribblesLeftInSet--;
+        let delay = (move.text === "SPIN") ? 2000 : rand(parseInt(document.getElementById('timeMin').value), parseInt(document.getElementById('timeMax').value));
+        currentTimeout = setTimeout(dribbleStep, delay);
+    } else {
+        let pool = []; dribbleFinishesChoices.forEach(f => { if(document.getElementById('chk-'+f.id).checked) pool.push(f.text); });
+        triggerVisual(pool.length > 0 ? pool[Math.floor(Math.random()*pool.length)] : "FINIS !", "#e74c3c", 900);
+        currentTimeout = setTimeout(() => { triggerVisual("REPOS", "black", 0); currentTimeout = setTimeout(() => { if(isRunning) { dribbleSeriesCount++; spinUsedThisSeries=false; lastDribbleText=""; startDribbleLogic(); }}, 3000); }, 2500);
+    }
+}
+
+/* --- TIRS (SHOOT) --- */
+function runShootSequence() {
+    if(!isRunning) return;
+    triggerVisual("---", "black", 0);
+    document.getElementById('status-text').textContent = "Attente défense...";
+    currentTimeout = setTimeout(() => {
+        if(!isRunning) return;
+        triggerVisual("PRÊT...", "white", 0);
+        currentTimeout = setTimeout(executeShootLogic, rand(parseInt(document.getElementById('whiteMin').value), parseInt(document.getElementById('whiteMax').value)));
+    }, 1200);
+}
+function executeShootLogic() {
+    if(!isRunning) return;
+    const p3 = parseFloat(document.getElementById('p3').value);
+    const pMid = parseFloat(document.getElementById('pMid').value);
+    const pFloat = parseFloat(document.getElementById('pFloat').value);
+    const pCercle = parseFloat(document.getElementById('pCercle').value);
+    const total = p3 + pMid + pFloat + pCercle;
+    const randVal = Math.random() * total;
+
+    if(randVal < p3) { 
+        triggerVisual("SHOOT 3PTS !", "#2ecc71", 800); 
+        recoveryShoot(); 
+    } else {
+        triggerVisual("DRIVE !", "#e74c3c", 600);
+        let time, txt;
+        if(randVal < (p3 + pMid)) { time = parseFloat(document.getElementById('midTime').value)*1000; txt = "PULL-UP"; }
+        else if(randVal < (p3 + pMid + pFloat)) { time = parseFloat(document.getElementById('floatTime').value)*1000; txt = "FLOATER"; }
+        else { time = parseFloat(document.getElementById('cercleTime').value)*1000; txt = "AU CERCLE !"; }
+        currentTimeout = setTimeout(() => { if(isRunning) { triggerVisual(txt, "#2ecc71", 800); recoveryShoot(); }}, time);
+    }
+}
+
+function recoveryShoot() {
+    let rec = parseInt(document.getElementById('recupTime').value);
+    currentTimeout = setTimeout(() => { 
+        if(isRunning) { 
+            triggerVisual("REPOS", "black", 0); 
+            const updateRestText = () => {
+                if(!isRunning) return;
+                if(rec > 0) {
+                    document.getElementById('status-text').textContent = "Repos : " + rec + "s";
+                    rec--;
+                    currentTimeout = setTimeout(updateRestText, 1000);
+                } else {
+                    runShootSequence();
+                }
+            };
+            updateRestText();
+        }
+    }, 3500);
+}
+
+/* --- FINITION CERCLE --- */
+function runFinishSequence() {
+    if(!isRunning) return;
+    const side = Math.random() < 0.5 ? {t:"GAUCHE", c:"#2980b9"} : {t:"DROITE", c:"#c0392b"};
+    triggerVisual(side.t, side.c, 600);
+    currentTimeout = setTimeout(() => {
+        if(!isRunning) return;
+        let pool = []; finishingMoves.forEach(m => { if(document.getElementById('chk-'+m.id).checked){ let f = parseInt(document.getElementById('frq-'+m.id).value)||0; for(let i=0;i<f;i++) pool.push(m); }});
+        if(pool.length===0) return;
+        const move = pool[Math.floor(Math.random()*pool.length)];
+        triggerVisual(move.text, move.color, 900);
+        
+        // Timer de repos pour finition
+        currentTimeout = setTimeout(() => { 
+            if(isRunning) { 
+                triggerVisual("REPOS", "black", 0);
+                let recF = parseInt(document.getElementById('recupFinish').value);
+                const updateFinishRestText = () => {
+                    if(!isRunning) return;
+                    if(recF > 0) {
+                        document.getElementById('status-text').textContent = "Repos : " + recF + "s";
+                        recF--;
+                        currentTimeout = setTimeout(updateFinishRestText, 1000);
+                    } else {
+                        runFinishSequence();
+                    }
+                };
+                updateFinishRestText();
+            }
+        }, 3000);
+    }, parseFloat(document.getElementById('driveDelay').value)*1000);
+}
+
+/* --- REGLAGES --- */
+function buildSettings() {
+    const cont = document.getElementById('settings-content');
+    let base = `<h3>Séance</h3><div class="control-group"><label>Durée (Min) <span class="val" id="vDur">5</span></label><input type="range" id="workoutDuration" min="1" max="30" value="5" oninput="updateUI()"></div><hr>`;
+
+    if(currentMode === 'dribble') {
+        cont.innerHTML = base + `<h3>Choix Dribbles</h3>${allDribbleMoves.map(m => `<label class="check-item"><input type="checkbox" id="chk-${m.id}" checked> ${m.text}</label>`).join('')}<hr><h3>Finitions</h3>${dribbleFinishesChoices.map(f => `<label class="check-item"><input type="checkbox" id="chk-${f.id}" checked> ${f.text}</label>`).join('')}<hr><h3>Timings</h3><div class="control-group"><label>Vitesse Min (ms) <span class="val" id="vTMin">800</span></label><input type="range" id="timeMin" min="400" max="2000" step="50" value="800" oninput="updateUI()"></div><div class="control-group"><label>Vitesse Max (ms) <span class="val" id="vTMax">1300</span></label><input type="range" id="timeMax" min="500" max="3000" step="50" value="1300" oninput="updateUI()"></div><input type="hidden" id="countMin" value="4"><input type="hidden" id="countMax" value="8">`;
+    } else if(currentMode === 'shoot') {
+        cont.innerHTML = base + `<div class="control-group"><label>Récup (s) <span class="val" id="vRecup">12</span></label><input type="range" id="recupTime" min="3" max="30" step="1" value="12" oninput="updateUI()"></div><hr><h3>Réaction</h3><div class="control-group"><label>Blanc Min <span class="val" id="vWMin">500</span></label><input type="range" id="whiteMin" min="200" max="2000" step="50" value="500" oninput="updateUI()"></div><div class="control-group"><label>Blanc Max <span class="val" id="vWMax">1500</span></label><input type="range" id="whiteMax" min="300" max="4000" step="50" value="1500" oninput="updateUI()"></div><hr><h3>Timings Drive</h3><div class="control-group"><label>Pull-up (s) <span class="val" id="vMid">1.2</span></label><input type="range" id="midTime" min="0.3" max="3" step="0.1" value="1.2" oninput="updateUI()"></div><div class="control-group"><label>Floater (s) <span class="val" id="vFloat">1.6</span></label><input type="range" id="floatTime" min="0.3" max="3" step="0.1" value="1.6" oninput="updateUI()"></div><div class="control-group"><label>Cercle (s) <span class="val" id="vCercle">2.0</span></label><input type="range" id="cercleTime" min="0.3" max="4" step="0.1" value="2.0" oninput="updateUI()"></div><hr><h3>Probabilités (%)</h3><div class="control-group"><label>Shoot 3pts <span class="val" id="vp3">25</span></label><input type="range" id="p3" min="0" max="100" value="25" oninput="updateUI()"></div><div class="control-group"><label>Pull-up <span class="val" id="vpMid">40</span></label><input type="range" id="pMid" min="0" max="100" value="40" oninput="updateUI()"></div><div class="control-group"><label>Floater <span class="val" id="vpFloat">15</span></label><input type="range" id="pFloat" min="0" max="100" value="15" oninput="updateUI()"></div><div class="control-group"><label>Cercle <span class="val" id="vpCercle">20</span></label><input type="range" id="pCercle" min="0" max="100" value="20" oninput="updateUI()"></div>`;
+    } else {
+        cont.innerHTML = base + `<div class="control-group"><label>Repos (s) <span class="val" id="vRecF">10</span></label><input type="range" id="recupFinish" min="3" max="30" step="1" value="10" oninput="updateUI()"></div><div class="control-group"><label>Finition (s) <span class="val" id="vDrive">2.0</span></label><input type="range" id="driveDelay" min="0.5" max="5" step="0.1" value="2.0" oninput="updateUI()"></div><hr><h3>Fréquences</h3>${finishingMoves.map(m => `<div class="check-freq-item"><input type="checkbox" id="chk-${m.id}" checked><span>${m.text}</span><input type="number" id="frq-${m.id}" value="10"></div>`).join('')}`;
+    }
+}
+
+function updateUI() {
+    const vD = document.getElementById('workoutDuration').value; document.getElementById('vDur').textContent = vD;
+    document.getElementById('timer-display').textContent = String(vD).padStart(2,"0")+":00";
+    if(currentMode==='shoot'){
+        document.getElementById('vRecup').textContent = document.getElementById('recupTime').value + 's';
+        document.getElementById('vWMin').textContent = document.getElementById('whiteMin').value + 'ms';
+        document.getElementById('vWMax').textContent = document.getElementById('whiteMax').value + 'ms';
+        document.getElementById('vMid').textContent = document.getElementById('midTime').value + 's';
+        document.getElementById('vFloat').textContent = document.getElementById('floatTime').value + 's';
+        document.getElementById('vCercle').textContent = document.getElementById('cercleTime').value + 's';
+        document.getElementById('vp3').textContent = document.getElementById('p3').value;
+        document.getElementById('vpMid').textContent = document.getElementById('pMid').value;
+        document.getElementById('vpFloat').textContent = document.getElementById('pFloat').value;
+        document.getElementById('vpCercle').textContent = document.getElementById('pCercle').value;
+    } else if(currentMode==='dribble'){
+        document.getElementById('vTMin').textContent = document.getElementById('timeMin').value + 'ms';
+        document.getElementById('vTMax').textContent = document.getElementById('timeMax').value + 'ms';
+    } else if(currentMode==='finition'){
+        document.getElementById('vRecF').textContent = document.getElementById('recupFinish').value + 's';
+        document.getElementById('vDrive').textContent = document.getElementById('driveDelay').value + 's';
+    }
+}
+</script>
+</body>
+</html>
